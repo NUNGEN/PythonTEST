@@ -38,30 +38,22 @@
 # while True:
 #     now = datetime.datetime.now()
 #     tasks = os.popen("tasklist")
-
 import os
-
-def checkconnection
-
-with open("taskid.cvs", "w", newline="") as file
-    writer = csv.writer(file)
-    writer.writerow(["Time","Process name", "Memory Usage"])
-# Running the aforementioned command and saving its output
-output = os.popen('tasklist').read()
-test = output.splitlines()
-for i in  range (7, len(test))
-print(test[i])
-    now = datetime.datetime.now()
-    proccesName = test[i].split()
-    name = proccesName[0]
-    memory = proccesName[-2]
-print(proccesName)
-
-with open("taskid.cvs", "a", newline="") as file
-    writer = csv.writer(file)
-    writer.writerow(["Time","Process name", "Memory Usage"])
-#D isplaying the output
+import csv
 from datetime import datetime
+
+def collect_process_info(filename="tasklist.csv"):
+    with open(filename, "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Time", "Process Name", "Memory Usage"])
+        output = os.popen('tasklist').read().splitlines()
+        for line in output[7:]:
+            parts = line.split()
+            if len(parts) >= 5:
+                name = parts[0]
+                memory = parts[-2]
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                writer.writerow([now, name, memory])
 
 class Event:
     def __init__(self, note, officer_name):
@@ -70,8 +62,7 @@ class Event:
         self.officer_name = officer_name
 
     def __str__(self):
-        return f"[{self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {self.officer_name}: {self.note}"
-
+        return f"[{self.timestamp:%Y-%m-%d %H:%M:%S}] {self.officer_name}: {self.note}"
 
 class Case:
     def __init__(self, case_id, description):
@@ -81,10 +72,8 @@ class Case:
         self.events = []
 
     def add_event(self, event):
-        if self.status == "closed":
-            print("Cannot add event to a closed case.")
-            return
-        self.events.append(event)
+        if self.status != "closed":
+            self.events.append(event)
 
     def close_case(self):
         self.status = "closed"
@@ -101,7 +90,6 @@ class Case:
     def get_case_id(self):
         return self.case_id
 
-
 class PoliceOfficer:
     def __init__(self, name, badge_number):
         self.name = name
@@ -112,42 +100,44 @@ class PoliceOfficer:
         self.cases.append(case)
 
     def get_case_by_id(self, case_id):
-        for case in self.cases:
-            if case.get_case_id() == case_id:
-                return case
-        return None
+        return next((case for case in self.cases if case.case_id == case_id), None)
 
     def get_summary(self):
-        open_cases = sum(1 for case in self.cases if case.get_status() == "open")
-        closed_cases = sum(1 for case in self.cases if case.get_status() == "closed")
-        return f"Officer {self.name} ({self.badge_number}) has {open_cases} open case(s) and {closed_cases} closed case(s)."
+        open_cases = sum(case.status == "open" for case in self.cases)
+        closed_cases = sum(case.status == "closed" for case in self.cases)
+        return f"{self.name} ({self.badge_number}) — {open_cases} открытых, {closed_cases} закрытых дел"
 
     def get_info(self):
-        return f"{self.name}, Badge Number: {self.badge_number}"
+        return f"{self.name}, значок № {self.badge_number}"
+
+if __name__ == "__main__":
+    collect_process_info()
+
+    officer = PoliceOfficer("John Doe", "12345")
+
+    case1 = Case(1, "Кража со взломом на улице Main, 123")
+    case2 = Case(2, "Вандализм в Центральном парке")
+
+    officer.assign_case(case1)
+    officer.assign_case(case2)
+
+    event1 = Event("Осмотрел место преступления", officer.name)
+    case1.add_event(event1)
+
+    event2 = Event("Допросил свидетеля", officer.name)
+    case1.add_event(event2)
+
+    case1.close_case()
+
+    print(officer.get_summary())
+
+    case = officer.get_case_by_id(1)
+    if case:
+        for e in case.get_timeline():
+            print(e)
 
 
-# Example usage:
 
-officer = PoliceOfficer("John Doe", "12345")
 
-case1 = Case(1, "Burglary at 123 Main St.")
-case2 = Case(2, "Vandalism in Central Park")
 
-officer.assign_case(case1)
-officer.assign_case(case2)
 
-event1 = Event("Visited crime scene", officer.name)
-case1.add_event(event1)
-
-event2 = Event("Interviewed witness", officer.name)
-case1.add_event(event2)
-
-case1.close_case()
-
-print(officer.get_summary())
-
-case = officer.get_case_by_id(1)
-if case:
-    print(f"Case {case.get_case_id()} timeline:")
-    for e in case.get_timeline():
-        print(e)
